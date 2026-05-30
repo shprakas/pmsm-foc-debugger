@@ -159,8 +159,9 @@ MIT License
 
 ---
 
-## Author
 
-Astha Tiwari
+##
+
+Shiv Prakash
 
 Interactive educational and debugging tool for PMSM Field-Oriented Control development.
