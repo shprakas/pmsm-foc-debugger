@@ -124,7 +124,7 @@
     <div class="card">
       <h3>Command</h3>
       <div class="row"><label>i_d*</label><input type="range" id="idr" min="-10" max="10" step="0.5" value="0"><input type="number" id="idrN" min="-100" max="100" step="0.1" value="0"><span class="v" id="idrO">A</span></div>
-      <div class="row"><label>i_q*</label><input type="range" id="iqr" min="-10" max="10" step="0.5" value="5"><input type="number" id="iqrN" min="-100" max="100" step="0.1" value="5"><span class="v" id="iqrO">A</span></div>
+      <div class="row"><label>i_q*</label><input type="range" id="iqr" min="-10" max="10" step="0.5" value="0"><input type="number" id="iqrN" min="-100" max="100" step="0.1" value="0"><span class="v" id="iqrO">A</span></div>
       <label class="chk" style="margin-top:6px;"><input type="checkbox" id="ff"> back-EMF feedforward</label>
     </div>
     <div class="card">
@@ -145,7 +145,6 @@
       <h3>Controller &amp; PWM</h3>
       <div class="prow"><label>K<sub>p</sub></label><input type="number" id="pKp" step="0.1" value="2.514"><span class="u">V/A</span></div>
       <div class="prow"><label>K<sub>i</sub></label><input type="number" id="pKi" step="10" value="314"><span class="u">V/As</span></div>
-      <div class="prow"><label>∫ method</label><select id="pInt"><option value="euler">Forward Euler</option><option value="trap">Trapezoidal</option></select><span class="u"></span></div>
       <div class="prow"><label>f<sub>sw</sub></label><input type="number" id="pFsw" step="0.5" value="10"><span class="u">kHz</span></div>
       <div class="prow"><label>solver h≤</label><input type="number" id="pH" min="0.01" step="0.1" value="2.0"><span class="u">µs</span></div>
       <div class="readout" style="margin:4px 0 8px;">T<sub>s</sub>=<span class="hl" id="tsO">100</span> µs · <span class="hl" id="solverO">RK4 h≈2.00 µs ×50</span></div>
@@ -170,7 +169,7 @@
         <line id="vBemf" stroke="#9aa3b0" stroke-width="1.6" stroke-dasharray="5 3" marker-end="url(#ah)"/><line id="vVec" stroke="#7aa2ff" stroke-width="2.6" marker-end="url(#ah)"/>
       </svg></div>
       <div class="legend"><span><b style="color:var(--u)">&#9472;</b>u</span><span><b style="color:var(--bemf)">&#9548;</b>back-EMF</span><span><b style="color:var(--ctrl)">&#9548;</b>ctrl d&#8242;/q&#8242;</span></div>
-      <div class="readout">true&nbsp; u_d=<span class="hl" id="vud">0.0</span> u_q=<span class="hl" id="vuq">0.0</span><br>ctrl&nbsp; u_d&#8242;=<span class="hl" id="vudc">0.0</span> u_q&#8242;=<span class="hl" id="vuqc">0.0</span></div>
+      <div class="readout">true&nbsp; u_d=<span class="hl" id="vud">0.0</span> u_q=<span class="hl" id="vuq">0.0</span><br>ctrl&nbsp; u_d&#8242;=<span class="hl" id="vudc">0.0</span> u_q&#8242;=<span class="hl" id="vuqc">0.0</span><br>back-EMF E=<span class="hl" id="vbemf">0.0</span> · net q drive v_Lq=<span class="hl" id="vnetq">0.0</span> · net d drive v_Ld=<span class="hl" id="vnetd">0.0</span></div>
     </div>
     <div class="card">
       <div class="scope-head"><span class="t" style="color:var(--i)">Current</span><span class="fs" id="iFS">±16 A</span></div>
@@ -230,10 +229,10 @@
 
 <script>
 (function(){
-  var O=150,AL=120,rad=Math.PI/180,NSUB=50,solverUs=2.0,intMethod='euler';
+  var O=150,AL=120,rad=Math.PI/180,NSUB=50,solverUs=2.0;
   function $(x){return document.getElementById(x);}
-  var id=0,iq=0,EdInt=0,EqInt=0,prevEd=0,prevEq=0,hasPrevErr=false,t=0,steps=0;
-  var idr=0,iqr=5,dth=30,rpm=1000,ff=false;
+  var id=0,iq=0,EdInt=0,EqInt=0,t=0,steps=0;
+  var idr=0,iqr=0,dth=30,rpm=1000,ff=false;
   var Kp=2.514,Ki=314,R=0.5,Ld=0.002,Lq=0.002,psi=0.1,p=3,fsw=10000;
   var wm,w,E,Ts;
   var hist=[],logs=[],traj=[];
@@ -356,41 +355,38 @@
     $('nO').textContent=steps;$('tO').textContent=(t*1000).toFixed(3);
     if($('wmO')) $('wmO').textContent=f(wm,1);$('weO').textContent=f(w,1);$('eO').textContent=f(E,1);$('tsO').textContent=(Ts*1e6).toFixed(1);
     $('vud').textContent=f(o.ud,1);$('vuq').textContent=f(o.uq,1);$('vudc').textContent=f(o.udc,1);$('vuqc').textContent=f(o.uqc,1);
+    if($('vbemf')){$('vbemf').textContent=f(E,1);$('vnetq').textContent=f(o.uq-R*iq-w*Ld*id-w*psi,2);$('vnetd').textContent=f(o.ud-R*id+w*Lq*iq,2);}
     $('iid').textContent=f(id,2);$('iiq').textContent=f(iq,2);$('iidc').textContent=f(o.idm,2);$('iiqc').textContent=f(o.iqm,2);
     $('tq').textContent=f(torque(),2);
     var us=(Ts*1e6).toFixed(1), wLd=w*Ld, wLq=w*Lq, hUs=(Ts/NSUB*1e6).toFixed(2);
-    var nextEdInt=(intMethod==='trap'&&hasPrevErr)?EdInt+0.5*(prevEd+o.ed)*Ts:EdInt+o.ed*Ts;
-    var nextEqInt=(intMethod==='trap'&&hasPrevErr)?EqInt+0.5*(prevEq+o.eq)*Ts:EqInt+o.eq*Ts;
-    var intTitle=(intMethod==='trap')?'trapezoidal error integrator':'forward Euler error integrator';
-    var intNote=(intMethod==='trap'&&hasPrevErr)?'Trapezoidal rule uses the previous and present error samples.':'Forward Euler uses the present error sample. Trapezoidal falls back to Euler for the first sample because no previous error exists yet.';
-    var H='<span class="cst">Kp='+f(Kp,3)+' Ki='+f(Ki,0)+' R='+f(R,3)+' Ld='+f(Ld*1e3,2)+'mH Lq='+f(Lq*1e3,2)+'mH p='+p+' \u03c8f='+f(psi,3)+' rpm='+f(rpm,1)+' ωm='+f(wm,1)+' ωe='+f(w,1)+' \u03c9Ld='+f(wLd,3)+' \u03c9Lq='+f(wLq,3)+' E='+f(E,2)+'V Ts='+us+'\u00b5s RK4h='+hUs+'\u00b5s ×'+NSUB+' ∫method='+intTitle+' ∫e_d='+f(EdInt,4)+' ∫e_q='+f(EqInt,4)+'</span>';
+    var nextEdInt=EdInt+o.ed*Ts, nextEqInt=EqInt+o.eq*Ts;
+    var H='<span class="cst">Kp='+f(Kp,3)+' Ki='+f(Ki,0)+' R='+f(R,3)+' Ld='+f(Ld*1e3,2)+'mH Lq='+f(Lq*1e3,2)+'mH p='+p+' \u03c8f='+f(psi,3)+' rpm='+f(rpm,1)+' ωm='+f(wm,1)+' ωe='+f(w,1)+' \u03c9Ld='+f(wLd,3)+' \u03c9Lq='+f(wLq,3)+' E='+f(E,2)+'V Ts='+us+'\u00b5s RK4h='+hUs+'\u00b5s ×'+NSUB+' ∫e_d='+f(EdInt,4)+' ∫e_q='+f(EqInt,4)+'</span>';
     H+='<div class="h">1 \u00b7 sample currents at PWM instant \u2014 Park, wrong angle (cos\u0394\u03b8='+f(o.c)+', sin\u0394\u03b8='+f(o.s)+')</div>';
-    H+='i_d\u2032 = i_d\u00b7cos\u0394\u03b8 + i_q\u00b7sin\u0394\u03b8 = '+f(id)+'\u00b7'+f(o.c)+' + '+f(iq)+'\u00b7'+f(o.s)+' = <b>'+f(o.idm)+'</b><br>';
-    H+='i_q\u2032 = \u2212i_d\u00b7sin\u0394\u03b8 + i_q\u00b7cos\u0394\u03b8 = \u2212'+f(id)+'\u00b7'+f(o.s)+' + '+f(iq)+'\u00b7'+f(o.c)+' = <b>'+f(o.iqm)+'</b>';
+    H+='i_d\u2032 <span class="cst">(current as the controller sees it)</span> = i_d\u00b7cos\u0394\u03b8 + i_q\u00b7sin\u0394\u03b8 = '+f(id)+'\u00b7'+f(o.c)+' + '+f(iq)+'\u00b7'+f(o.s)+' = <b>'+f(o.idm)+'</b><br>';
+    H+='i_q\u2032 <span class="cst">(current as the controller sees it)</span> = \u2212i_d\u00b7sin\u0394\u03b8 + i_q\u00b7cos\u0394\u03b8 = \u2212'+f(id)+'\u00b7'+f(o.s)+' + '+f(iq)+'\u00b7'+f(o.c)+' = <b>'+f(o.iqm)+'</b>';
     H+='<div class="h">2 \u00b7 error vs command</div>';
-    H+='e_d = i_d* \u2212 i_d\u2032 = '+f(idr)+' \u2212 '+f(o.idm)+' = <b>'+f(o.ed)+'</b> &nbsp; e_q = i_q* \u2212 i_q\u2032 = '+f(iqr)+' \u2212 '+f(o.iqm)+' = <b>'+f(o.eq)+'</b>';
-    H+='<div class="h">3 · discrete PI — '+intTitle+', step Ts'+(ff?' + feedforward E':'')+'</div>';
-    H+='<span class="cst">Error integrator states are areas: I_ed = ∫e_d dt, I_eq = ∫e_q dt. '+intNote+'</span><br>';
-    if(intMethod==='trap'&&hasPrevErr){
-      H+='I_ed(k+1) = I_ed(k) + Ts/2·[e_d(k−1)+e_d(k)] = '+f(EdInt,4)+' + '+f(Ts,6)+'/2·['+f(prevEd)+' + '+f(o.ed)+'] = <b>'+f(nextEdInt,4)+'</b><br>';
-      H+='I_eq(k+1) = I_eq(k) + Ts/2·[e_q(k−1)+e_q(k)] = '+f(EqInt,4)+' + '+f(Ts,6)+'/2·['+f(prevEq)+' + '+f(o.eq)+'] = <b>'+f(nextEqInt,4)+'</b><br>';
-    } else {
-      H+='I_ed(k+1) = I_ed(k) + Ts·e_d(k) = '+f(EdInt,4)+' + '+f(Ts,6)+'·'+f(o.ed)+' = <b>'+f(nextEdInt,4)+'</b><br>';
-      H+='I_eq(k+1) = I_eq(k) + Ts·e_q(k) = '+f(EqInt,4)+' + '+f(Ts,6)+'·'+f(o.eq)+' = <b>'+f(nextEqInt,4)+'</b><br>';
-    }
+    H+='<span class="cst">how far each measured current is from its command:</span><br>e_d = i_d* \u2212 i_d\u2032 = '+f(idr)+' \u2212 '+f(o.idm)+' = <b>'+f(o.ed)+'</b> &nbsp; e_q = i_q* \u2212 i_q\u2032 = '+f(iqr)+' \u2212 '+f(o.iqm)+' = <b>'+f(o.eq)+'</b>';
+    H+='<div class="h">3 · discrete PI — forward Euler integrator, step Ts'+(ff?' + feedforward E':'')+'</div>';
+    H+='<span class="cst">Error integrator states are areas: I_ed = ∫e_d dt, I_eq = ∫e_q dt. Forward Euler uses the present error sample.</span><br>';
+    H+='I_ed(k+1) = I_ed(k) + Ts·e_d(k) = '+f(EdInt,4)+' + '+f(Ts,6)+'·'+f(o.ed)+' = <b>'+f(nextEdInt,4)+'</b><br>';
+    H+='I_eq(k+1) = I_eq(k) + Ts·e_q(k) = '+f(EqInt,4)+' + '+f(Ts,6)+'·'+f(o.eq)+' = <b>'+f(nextEqInt,4)+'</b><br>';
     H+='<span class="cst">PI uses the stored integrator value I_e(k) to make u′(k), then stores I_e(k+1) for the next PWM period.</span><br>';
-    H+='u_d′(k) = Kp·e_d(k) + Ki·I_ed(k) = '+f(Kp,3)+'·'+f(o.ed)+' + '+f(Ki,0)+'·'+f(EdInt,4)+' = <b>'+f(o.udc)+'</b><br>';
+    H+='u_d′(k) <span class="cst">(controller voltage command)</span> = Kp·e_d(k) + Ki·I_ed(k) = '+f(Kp,3)+'·'+f(o.ed)+' + '+f(Ki,0)+'·'+f(EdInt,4)+' = <b>'+f(o.udc)+'</b><br>';
     H+='u_q′(k) = Kp·e_q(k) + Ki·I_eq(k)'+(ff?' + E':'')+' = '+f(Kp,3)+'·'+f(o.eq)+' + '+f(Ki,0)+'·'+f(EqInt,4)+(ff?' + '+f(E,2):'')+' = <b>'+f(o.uqc)+'</b>';
     H+='<div class="h">4 \u00b7 voltage applied to terminals \u2014 inverter holds command for whole period (inverse Park, wrong angle)</div>';
-    H+='u_d = u_d\u2032\u00b7cos\u0394\u03b8 \u2212 u_q\u2032\u00b7sin\u0394\u03b8 = '+f(o.udc)+'\u00b7'+f(o.c)+' \u2212 '+f(o.uqc)+'\u00b7'+f(o.s)+' = <b>'+f(o.ud)+'</b><br>';
+    H+='u_d <span class="cst">(real machine terminal voltage)</span> = u_d\u2032\u00b7cos\u0394\u03b8 \u2212 u_q\u2032\u00b7sin\u0394\u03b8 = '+f(o.udc)+'\u00b7'+f(o.c)+' \u2212 '+f(o.uqc)+'\u00b7'+f(o.s)+' = <b>'+f(o.ud)+'</b><br>';
     H+='u_q = u_d\u2032\u00b7sin\u0394\u03b8 + u_q\u2032\u00b7cos\u0394\u03b8 = '+f(o.udc)+'\u00b7'+f(o.s)+' + '+f(o.uqc)+'\u00b7'+f(o.c)+' = <b>'+f(o.uq)+'</b> &nbsp;(held over Ts)';
-    H+='<div class="h">5 \u00b7 machine equation — small-signal derivative at the sample</div>';
+    H+='<div class="h">5 \u00b7 machine equation — net driving voltage \u2192 current slope</div>';
     H+='<span class="cst">Textbook dq KVL, with voltage held constant during this PWM period:</span><br>';
     H+='u_d = R\u00b7i_d + L_d\u00b7(d i_d/dt) \u2212 \u03c9_e L_q\u00b7i_q<br>';
     H+='u_q = R\u00b7i_q + L_q\u00b7(d i_q/dt) + \u03c9_e L_d\u00b7i_d + \u03c9_e\u03c8_f<br>';
-    H+='<span class="cst">Solve the KVL equations for the current slopes:</span><br>';
-    H+='d i_d/dt = (u_d \u2212 R\u00b7i_d + \u03c9_e L_q\u00b7i_q)/L_d = ('+f(o.ud)+' \u2212 '+f(R,3)+'\u00b7'+f(id)+' + '+f(wLq)+'\u00b7'+f(iq)+')/'+f(Ld,5)+' = <b>'+f(o.did,1)+'</b><br>';
-    H+='d i_q/dt = (u_q \u2212 R\u00b7i_q \u2212 \u03c9_e L_d\u00b7i_d \u2212 \u03c9_e\u03c8_f)/L_q = ('+f(o.uq)+' \u2212 '+f(R,3)+'\u00b7'+f(iq)+' \u2212 '+f(wLd)+'\u00b7'+f(id)+' \u2212 '+f(E,2)+')/'+f(Lq,5)+' = <b>'+f(o.diq,1)+'</b>';
+    H+='<span class="cst">Net voltage left across each inductance after the internal drops \u2014 this is what actually moves the current:</span><br>';
+    H+='v_Ld <span class="cst">(net d-axis driving voltage)</span> = u_d \u2212 R\u00b7i_d + \u03c9_e L_q\u00b7i_q = '+f(o.ud)+' \u2212 '+f(R,3)+'\u00b7'+f(id)+' + '+f(wLq)+'\u00b7'+f(iq)+' = <b>'+f(o.ud-R*id+wLq*iq,3)+'</b> V<br>';
+    H+='v_Lq <span class="cst">(net q-axis driving voltage)</span> = u_q \u2212 R\u00b7i_q \u2212 \u03c9_e L_d\u00b7i_d \u2212 \u03c9_e\u03c8_f = '+f(o.uq)+' \u2212 '+f(R,3)+'\u00b7'+f(iq)+' \u2212 '+f(wLd)+'\u00b7'+f(id)+' \u2212 '+f(E,2)+' = <b>'+f(o.uq-R*iq-wLd*id-E,3)+'</b> V<br>';
+    H+='<span class="cst">\u03c9_e\u03c8_f = '+f(E,2)+' V is the back-EMF. At turn-on (i=0) the R\u00b7i and \u03c9L terms vanish, so v_Lq = u_q \u2212 \u03c9_e\u03c8_f = '+f(o.uq,2)+' \u2212 '+f(E,2)+' = '+f(o.uq-E,3)+' V \u2014 exactly the difference between the controller\u2019s projected q voltage and the back-EMF.</span><br>';
+    H+='Each slope is that net voltage divided by its inductance:<br>';
+    H+='d i_d/dt <span class="cst">(rate i_d changes)</span> = v_Ld / L_d = '+f(o.ud-R*id+wLq*iq,3)+' / '+f(Ld,5)+' = <b>'+f(o.did,1)+'</b> A/s<br>';
+    H+='d i_q/dt <span class="cst">(rate i_q changes)</span> = v_Lq / L_q = '+f(o.uq-R*iq-wLd*id-E,3)+' / '+f(Lq,5)+' = <b>'+f(o.diq,1)+'</b> A/s';
     H+='<div class="h">6 \u00b7 integrate machine over Ts — RK4, h≈'+hUs+' µs, '+NSUB+' sub-steps (bold = state at next PWM instant)</div>';
     H+='i_d(k+1) = \u222b di_d/dt dt over Ts = <b>'+f(nx[0])+'</b> &nbsp;<span class="cst">(Euler i_d+di\u00b7Ts \u2248 '+f(id+o.did*Ts)+')</span><br>';
     H+='i_q(k+1) = \u222b di_q/dt dt over Ts = <b>'+f(nx[1])+'</b> &nbsp;<span class="cst">(Euler \u2248 '+f(iq+o.diq*Ts)+')</span>';
@@ -480,20 +476,18 @@
     var o=ctrl();
     traj.push([t,id,iq,o.idm,o.iqm,o.ud,o.uq,o.udc,o.uqc,torque()]);
     var nx=rk4(o.ud,o.uq);
-    if(intMethod==='trap'&&hasPrevErr){ EdInt+=0.5*(prevEd+o.ed)*Ts; EqInt+=0.5*(prevEq+o.eq)*Ts; }
-    else { EdInt+=o.ed*Ts; EqInt+=o.eq*Ts; }
-    prevEd=o.ed; prevEq=o.eq; hasPrevErr=true;
+    EdInt+=o.ed*Ts; EqInt+=o.eq*Ts;
     id=nx[0]; iq=nx[1]; t+=Ts; steps++;
   }
-  function step(){ hist.push([id,iq,EdInt,EqInt,prevEd,prevEq,hasPrevErr,t,steps,traj.length]); if(hist.length>4000)hist.shift(); commitStep(); render(); plotAll(); }
+  function step(){ hist.push([id,iq,EdInt,EqInt,t,steps,traj.length]); if(hist.length>4000)hist.shift(); commitStep(); render(); plotAll(); }
   function runFor(dur){
     if(!(dur>0))return; setDerived();
     var n=Math.round(dur/Ts); if(n>200000)n=200000;
-    hist.push([id,iq,EdInt,EqInt,prevEd,prevEq,hasPrevErr,t,steps,traj.length]);
+    hist.push([id,iq,EdInt,EqInt,t,steps,traj.length]);
     for(var k=0;k<n;k++) commitStep();
     render(); plotAll();
   }
-  function back(){ if(!hist.length)return; var s=hist.pop(); id=s[0];iq=s[1];EdInt=s[2];EqInt=s[3];prevEd=s[4];prevEq=s[5];hasPrevErr=s[6];t=s[7];steps=s[8];traj.length=s[9]; render(); plotAll(); }
+  function back(){ if(!hist.length)return; var s=hist.pop(); id=s[0];iq=s[1];EdInt=s[2];EqInt=s[3];t=s[4];steps=s[5];traj.length=s[6]; render(); plotAll(); }
   // listeners
   function readNum(el, fallback){
     var node=$(el), v=node?parseFloat(node.value):NaN;
@@ -506,7 +500,7 @@
     $('rpm').value=Math.min(4000,rpm); $('rpmN').value=rpm;
     $('pR').value=R; $('pLd').value=Ld*1e3; $('pLq').value=Lq*1e3; $('pPsi').value=psi;
     $('pP').value=p; $('pKp').value=Kp; $('pKi').value=Ki; $('pFsw').value=fsw/1000; $('pH').value=solverUs;
-    $('pInt').value=intMethod; $('ff').checked=ff;
+    $('ff').checked=ff;
   }
   function syncStateFromInputs(){
     // Important: browsers can restore number-box values after reload. Read DOM values once
@@ -524,11 +518,10 @@
     Ki=readNum('pKi',Ki);
     fsw=Math.max(0.1,readNum('pFsw',fsw/1000))*1000;
     solverUs=Math.max(0.01,readNum('pH',solverUs));
-    intMethod=$('pInt')?$('pInt').value:intMethod;
     ff=$('ff')?$('ff').checked:ff;
     writeInitialControls();
   }
-  function resetSim(){ id=0;iq=0;EdInt=0;EqInt=0;prevEd=0;prevEq=0;hasPrevErr=false;t=0;steps=0;hist=[];traj=[]; panels.forEach(function(p){cur[p.key].zoom=null;cur[p.key].zsel=null;}); }
+  function resetSim(){ id=0;iq=0;EdInt=0;EqInt=0;t=0;steps=0;hist=[];traj=[]; panels.forEach(function(p){cur[p.key].zoom=null;cur[p.key].zsel=null;}); }
   function liveReset(){ resetSim(); render(); plotAll(); }
   function setIdRef(v){ if(isNaN(v))return; idr=v; $('idr').value=Math.max(-10,Math.min(10,v)); $('idrN').value=v; $('idrO').textContent='A'; liveReset(); }
   function setIqRef(v){ if(isNaN(v))return; iqr=v; $('iqr').value=Math.max(-10,Math.min(10,v)); $('iqrN').value=v; $('iqrO').textContent='A'; liveReset(); }
